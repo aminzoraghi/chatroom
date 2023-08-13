@@ -32,23 +32,6 @@ function checkValidateLogin($username,$password){
     return $erorr;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 function uploadimg(){
 $target_dir = "uploads/";
 $target_file = $target_dir .time(). basename($_FILES["file"]["name"]);
