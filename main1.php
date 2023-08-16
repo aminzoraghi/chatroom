@@ -34,20 +34,33 @@ if (@$_POST['block']) {
 if (@$_POST['upload']) {
     $message = uploadimg();
     if ($message) {
-        $data = file_get_contents("./data/message.json");
-        $data = json_decode($data, true);
-        $number = array_search(end($data), $data) + 1;
-        //seen check
-        if ($data[$number - 1]['userid'] !== $userid) {
-            foreach ($data as $key => $item) {
-                $item['read'] = true;
-                $data[$key] = $item;
-            };
-        };
-        $data[$number] = ['messageId' => $number, 'message' => $message, 'type' => 'img', 'userid' => $userid, 'username' => $username, 'time' => time(), 'read' => false];
-        $data = json_encode($data, JSON_PRETTY_PRINT);
-        file_put_contents('./data/message.json', $data);
-        header("location:main.php");
+         //seen check
+    try{
+        $sql='SELECT * FROM messages ORDER BY id DESC LIMIT 1';
+        $stmt=$pdo->prepare($sql);
+        $stmt->execute();
+        $result=$stmt->fetch(PDO::FETCH_ASSOC);
+        if($result['user_id']!==$userid){
+            $sql='UPDATE messages SET is_seen=1';
+            $stmt=$pdo->prepare($sql);
+            $stmt->execute();
+        }
+    }catch(PDOException $e){
+        echo" connection error: ".$e->getMessage();
+    };
+    try{
+        $is_text=0;
+        $sql='INSERT INTO messages (message,user_id,is_text) VALUES (:message,:userid,:is_text)';
+        $stmt=$pdo->prepare($sql);
+        $stmt->bindParam(":message",$message);
+        $stmt->bindParam(":userid",$userid);
+        $stmt->bindParam(":is_text",$is_text);
+        $stmt->execute();
+        header("location:main1.php");
+        }catch(PDOException $e){
+            echo" connection error: ".$e->getMessage();
+    
+        }
     } else {
         echo "file is must be image and less than 2 mb";
     }
@@ -55,27 +68,40 @@ if (@$_POST['upload']) {
 
 //new massage
 if (@$_POST['submit']) {
-    $data = file_get_contents("./data/message.json");
-    $data = json_decode($data, true);
-    $number = array_search(end($data), $data) + 1;
     //seen check
-    if ($data[$number - 1]['userid'] !== $userid) {
-        foreach ($data as $key => $item) {
-            $item['read'] = true;
-            $data[$key] = $item;
-        };
-    };
-    $message = $_POST['message'];
-
-    if (strlen($message) < 100) {
-        $data[$number] = ['messageId' => $number, 'message' => $message, 'type' => 'text', 'userid' => $userid, 'username' => $username, 'time' => time(), 'read' => false];
-        $data = json_encode($data, JSON_PRETTY_PRINT);
-        file_put_contents('./data/message.json', $data);
-    } else {
-        echo "length must be less than 100";
+    try{
+        $sql='SELECT * FROM messages ORDER BY id DESC LIMIT 1';
+        $stmt=$pdo->prepare($sql);
+        $stmt->execute();
+        $result=$stmt->fetch(PDO::FETCH_ASSOC);
+        if($result['user_id']!==$userid){
+            $sql='UPDATE messages SET is_seen=1';
+            $stmt=$pdo->prepare($sql);
+            $stmt->execute();
+        }
+    }catch(PDOException $e){
+        echo" connection error: ".$e->getMessage();
     }
-    //header("location:main.php");
+
+   $message = $_POST['message'];
+
+ if (strlen($message) < 100) {
+    try{
+    $sql='INSERT INTO messages (message,user_id) VALUES (:message,:userid)';
+    $stmt=$pdo->prepare($sql);
+    $stmt->bindParam(":message",$message);
+    $stmt->bindParam(":userid",$userid);
+    $stmt->execute();
+    header("location:main1.php");
+    }catch(PDOException $e){
+        echo" connection error: ".$e->getMessage();
+
+    }
+}else{
+    echo "length must be less than 100";
+        }
 };
+
 //delete
 if (@$_POST['delete']) {
     $data = file_get_contents("./data/message.json");
@@ -218,7 +244,9 @@ try {
             <form action="" method="post" enctype="multipart/form-data">
                 <label for="fileUpload"><i class="fa fa-upload"></i></label>
                 <input type="file" id="fileUpload" name="file" required style="display: none;">
+                <?php if($is_active){ ?>
                 <input type="submit" name="upload" value="upload">
+                <?php } ?>
             </form>
         </div>
 
