@@ -1,5 +1,6 @@
 <?php
 require_once './src/function.php';
+require_once 'config.php';
 session_start();
 session_regenerate_id();
 if (@$_POST['submit']) {
@@ -10,56 +11,123 @@ if (@$_POST['submit']) {
     $vpassword = $_POST['vpassword'] ?? '';
     $email = $_POST['email'] ?? "";
     $name = $_POST['name'] ?? '';
+    if ($connectType == 'json') {
 
+        $data = file_get_contents("./data/user.json");
+        $data = json_decode($data, true);
+        $number = array_search(end($data), $data) + 1;
+        $n = 0;
+        if ($type == 'register') {
+            $erorr = checkValidate($username, $email, $name, $password);
 
-    $data = file_get_contents("./data/user.json");
-    $data = json_decode($data, true);
-    $number = array_search(end($data),$data) + 1;
-    $n = 0;
-    if ($type == 'register') {
-        $erorr = checkValidate($username, $email, $name, $password);
-
-        if ($erorr) {
-            $n++;
-            foreach ($erorr as $key => $item) {
-                echo "$key:$item </br>";
+            if ($erorr) {
+                $n++;
+                foreach ($erorr as $key => $item) {
+                    echo "$key:$item </br>";
+                }
+            }
+            if ($password == $vpassword) {
+                foreach ($data as $item) {
+                    if ($item['username'] == $username or $item['email'] == $email) {
+                        echo "username is valid";
+                        $n++;
+                    }
+                }
+            } else {
+                echo "password incorrect";
+                $n++;
+            }
+            if ($n == 0) {
+                $data[$number] = [
+                    'username' => $username, 'password' => md5($password), 'email' => $email,
+                    'name' => $name, 'id' => $number, 'admin' => false, 'status' => true, 'img' => "https://randomuser.me/api/portraits/women/$number.jpg", 'bio' => '', 'time' => time()
+                ];
+                $data = json_encode($data, JSON_PRETTY_PRINT);
+                file_put_contents('./data/user.json', $data);
+                echo "register is Successed";
+            }
+        } else {
+            $erorr = checkValidateLogin($username, $password);
+            if ($erorr) {
+                foreach ($erorr as $key => $item) {
+                    echo "$key:$item </br>";
+                }
+            } else {
+                foreach ($data as $key => $item) {
+                    if ($item['username'] == $username && $item['password'] == md5($password)) {
+                        $_SESSION['login'] = true;
+                        $_SESSION['username'] = $item['username'];
+                        $_SESSION['id'] = $item['id'];
+                        header("location:main.php");
+                    }
+                };
+                echo "invalid input data";
             }
         }
-        if ($password == $vpassword ) {
-            foreach ($data as $item) {
-                if ($item['username'] == $username or $item['email'] == $email) {
-                    echo "username is valid";
-                    $n++;
+    } else {
+        $n = 0;
+        if ($type == 'register') {
+            $erorr = checkValidate($username, $email, $name, $password);
+
+            if ($erorr) {
+                $n++;
+                foreach ($erorr as $key => $item) {
+                    echo "$key:$item </br>";
+                }
+            }
+            if ($password == $vpassword) {
+                try {
+                    $sql = 'SELECT * FROM users WHERE username=:username OR email=:email';
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->bindParam(":username", $username);
+                    $stmt->bindParam(":email", $email);
+                    $stmt->execute();
+                    $result = $stmt->fetchall(PDO::FETCH_ASSOC);
+                    if (count($result) > 0) {
+                        $n++;
+                        echo "username or email is valid";
+                    }
+                } catch (PDOException $e) {
+                    echo "Connection failed: " . $e->getMessage();
+                }
+            } else {
+                echo "password incorrect";
+                $n++;
+            }
+            if ($n == 0) {
+                try {
+                    $sql = "INSERT INTO users (username,name,email,password) VALUES (:username, :name, :email, :password)";
+                    $stmt = $pdo->prepare($sql);
+                    $password=md5($password);
+                    $stmt->bindParam(":username", $username);
+                    $stmt->bindParam(":name", $name);
+                    $stmt->bindParam(":email", $email);
+                    $stmt->bindParam(":password", $password);
+                    $stmt->execute();
+                    echo "register is Successed";
+                } catch (PDOException $e) {
+                    echo "Connection failed: " . $e->getMessage();
                 }
             }
         } else {
-            echo "password incorrect";
-            $n++;
-        }
-        if ($n == 0) {
-            $data[$number] = ['username' => $username, 'password' => md5($password), 'email' => $email,
-             'name' => $name,'id'=>$number , 'admin'=>false , 'status'=>true,'img'=>"https://randomuser.me/api/portraits/women/$number.jpg",'bio'=>'','time'=>time()];
-            $data = json_encode($data,JSON_PRETTY_PRINT);
-            file_put_contents('./data/user.json', $data);
-            echo "register is Successed";
-        }
-    } else {
-        $erorr=checkValidateLogin($username,$password);
-        if ($erorr) {
-            foreach ($erorr as $key => $item) {
-                echo "$key:$item </br>";
+            $erorr = checkValidateLogin($username, $password);
+            if ($erorr) {
+                foreach ($erorr as $key => $item) {
+                    echo "$key:$item </br>";
+                }
+            } else {
+                foreach ($data as $key => $item) {
+                    if ($item['username'] == $username && $item['password'] == md5($password)) {
+                        $_SESSION['login'] = true;
+                        $_SESSION['username'] = $item['username'];
+                        $_SESSION['id'] = $item['id'];
+                        header("location:main.php");
+                    }
+                };
+                echo "invalid input data";
             }
-        }else{
-        foreach ($data as $key => $item) {
-            if ($item['username'] == $username && $item['password'] == md5 ($password) ){
-                $_SESSION['login'] = true;
-                $_SESSION['username'] = $item['username'];
-                $_SESSION['id'] = $item['id'];
-                header("location:main.php");
-            }
-        };
-        echo "invalid input data";
-    }}
+        }
+    }
 }
 ?>
 <!DOCTYPE html>
