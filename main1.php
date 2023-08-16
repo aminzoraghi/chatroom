@@ -19,47 +19,52 @@ $username = $_SESSION['username'];
 //block and unblock user
 if (@$_POST['block']) {
     $id = $_POST['userid'];
-    $userdata = file_get_contents("./data/user.json");
-    $userdata = json_decode($userdata, true);
-    if ($_POST['block'] == 'block') {
-        $userdata[$id]['status'] = false;
-    } else {
-        $userdata[$id]['status'] = true;
-    };
-    $userdata = json_encode($userdata, JSON_PRETTY_PRINT);
-    file_put_contents('./data/user.json', $userdata);
-    header("location:main.php");
+    try {
+        $sql = 'UPDATE users SET status =:status WHERE id = :userid';
+        $stmt = $pdo->prepare($sql);
+        if ($_POST['block'] == 'block') {
+            $status = 0;
+            $stmt->bindparam(":status", $status);
+        } else {
+            $status = 1;
+            $stmt->bindparam(":status", $status);
+        };
+        $stmt->bindParam(":userid", $id);
+        $stmt->execute();
+    } catch (Exception $e) {
+        echo "Error: " . $e->getMessage();
+    }
+    header("location:main1.php");
 }
 //image uoload
 if (@$_POST['upload']) {
     $message = uploadimg();
     if ($message) {
-         //seen check
-    try{
-        $sql='SELECT * FROM messages ORDER BY id DESC LIMIT 1';
-        $stmt=$pdo->prepare($sql);
-        $stmt->execute();
-        $result=$stmt->fetch(PDO::FETCH_ASSOC);
-        if($result['user_id']!==$userid){
-            $sql='UPDATE messages SET is_seen=1';
-            $stmt=$pdo->prepare($sql);
+        //seen check
+        try {
+            $sql = 'SELECT * FROM messages ORDER BY id DESC LIMIT 1';
+            $stmt = $pdo->prepare($sql);
             $stmt->execute();
-        }
-    }catch(PDOException $e){
-        echo" connection error: ".$e->getMessage();
-    };
-    try{
-        $is_text=0;
-        $sql='INSERT INTO messages (message,user_id,is_text) VALUES (:message,:userid,:is_text)';
-        $stmt=$pdo->prepare($sql);
-        $stmt->bindParam(":message",$message);
-        $stmt->bindParam(":userid",$userid);
-        $stmt->bindParam(":is_text",$is_text);
-        $stmt->execute();
-        header("location:main1.php");
-        }catch(PDOException $e){
-            echo" connection error: ".$e->getMessage();
-    
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($result['user_id'] !== $userid) {
+                $sql = 'UPDATE messages SET is_seen=1';
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute();
+            }
+        } catch (PDOException $e) {
+            echo " connection error: " . $e->getMessage();
+        };
+        try {
+            $is_text = 0;
+            $sql = 'INSERT INTO messages (message,user_id,is_text) VALUES (:message,:userid,:is_text)';
+            $stmt = $pdo->prepare($sql);
+            $stmt->bindParam(":message", $message);
+            $stmt->bindParam(":userid", $userid);
+            $stmt->bindParam(":is_text", $is_text);
+            $stmt->execute();
+            header("location:main1.php");
+        } catch (PDOException $e) {
+            echo " connection error: " . $e->getMessage();
         }
     } else {
         echo "file is must be image and less than 2 mb";
@@ -69,56 +74,65 @@ if (@$_POST['upload']) {
 //new massage
 if (@$_POST['submit']) {
     //seen check
-    try{
-        $sql='SELECT * FROM messages ORDER BY id DESC LIMIT 1';
-        $stmt=$pdo->prepare($sql);
+    try {
+        $sql = 'SELECT * FROM messages ORDER BY id DESC LIMIT 1';
+        $stmt = $pdo->prepare($sql);
         $stmt->execute();
-        $result=$stmt->fetch(PDO::FETCH_ASSOC);
-        if($result['user_id']!==$userid){
-            $sql='UPDATE messages SET is_seen=1';
-            $stmt=$pdo->prepare($sql);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($result['user_id'] !== $userid) {
+            $sql = 'UPDATE messages SET is_seen=1';
+            $stmt = $pdo->prepare($sql);
             $stmt->execute();
         }
-    }catch(PDOException $e){
-        echo" connection error: ".$e->getMessage();
+    } catch (PDOException $e) {
+        echo " connection error: " . $e->getMessage();
     }
 
-   $message = $_POST['message'];
+    $message = $_POST['message'];
 
- if (strlen($message) < 100) {
-    try{
-    $sql='INSERT INTO messages (message,user_id) VALUES (:message,:userid)';
-    $stmt=$pdo->prepare($sql);
-    $stmt->bindParam(":message",$message);
-    $stmt->bindParam(":userid",$userid);
-    $stmt->execute();
-    header("location:main1.php");
-    }catch(PDOException $e){
-        echo" connection error: ".$e->getMessage();
-
-    }
-}else{
-    echo "length must be less than 100";
+    if (strlen($message) < 100) {
+        try {
+            $sql = 'INSERT INTO messages (message,user_id) VALUES (:message,:userid)';
+            $stmt = $pdo->prepare($sql);
+            $stmt->bindParam(":message", $message);
+            $stmt->bindParam(":userid", $userid);
+            $stmt->execute();
+            header("location:main1.php");
+        } catch (PDOException $e) {
+            echo " connection error: " . $e->getMessage();
         }
+    } else {
+        echo "length must be less than 100";
+    }
 };
 
 //delete
 if (@$_POST['delete']) {
-    $data = file_get_contents("./data/message.json");
-    $data = json_decode($data, true);
-    unset($data[$_POST["messageid"]]);
-    $data = json_encode($data, JSON_PRETTY_PRINT);
-    file_put_contents('./data/message.json', $data);
-    header("location:main.php");
+    try {
+        $message_id = $_POST['messageid'];
+        $sql = 'DELETE FROM messages WHERE id=:messageid';
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindparam(":messageid", $message_id);
+        $stmt->execute();
+        header("location:main1.php");
+    } catch (PDOException $e) {
+        echo " connection error: " . $e->getMessage();
+    }
 }
 //edit
 if (@$_POST['edit']) {
-    $data = file_get_contents("./data/message.json");
-    $data = json_decode($data, true);
-    $data[$_POST["messageid"]]["message"] = $_POST["message"];
-    $data = json_encode($data, JSON_PRETTY_PRINT);
-    file_put_contents('./data/message.json', $data);
-    header("location:main.php");
+
+    $message = $_POST['message'];
+    $id = $_POST['messageid'];
+    try {
+        $sql = 'UPDATE messages SET message=:message WHERE id=:id';
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindParam(":message", $message);
+        $stmt->bindParam(":id", $id);
+        $stmt->execute();
+    } catch (PDOException $e) {
+        echo " connection error: " . $e->getMessage();
+    }
 }
 //load message
 try {
@@ -184,7 +198,7 @@ try {
                                             echo htmlspecialchars($item['message']); ?></p><?php } else { ?>
                         <p class="para"><img src="<?php echo $item['message']; ?>"></p><?php
 
-                                                                                    } ?>
+                                                                                        } ?>
                     <span class="time-right"><?php if ($item['is_read']) {
                                                     echo 'seen';
                                                 }
@@ -244,8 +258,8 @@ try {
             <form action="" method="post" enctype="multipart/form-data">
                 <label for="fileUpload"><i class="fa fa-upload"></i></label>
                 <input type="file" id="fileUpload" name="file" required style="display: none;">
-                <?php if($is_active){ ?>
-                <input type="submit" name="upload" value="upload">
+                <?php if ($is_active) { ?>
+                    <input type="submit" name="upload" value="upload">
                 <?php } ?>
             </form>
         </div>
