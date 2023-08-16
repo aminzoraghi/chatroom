@@ -96,15 +96,19 @@ if (@$_POST['submit']) {
             }
             if ($n == 0) {
                 try {
-                    $sql = "INSERT INTO users (username,name,email,password) VALUES (:username, :name, :email, :password)";
+                    $number=rand(1,100);
+                    $imageurl="https://randomuser.me/api/portraits/women/$number.jpg";
+                    $sql = "INSERT INTO users (username,name,email,password,image_profile) VALUES (:username, :name, :email, :password,:image_profile)";
                     $stmt = $pdo->prepare($sql);
                     $password = md5($password);
                     $stmt->bindParam(":username", $username);
                     $stmt->bindParam(":name", $name);
                     $stmt->bindParam(":email", $email);
                     $stmt->bindParam(":password", $password);
+                    $stmt->bindParam(":image_profile", $imageurl);
                     $stmt->execute();
                     echo "register is Successed";
+
                 } catch (PDOException $e) {
                     echo "Connection failed: " . $e->getMessage();
                 }
@@ -126,9 +130,9 @@ if (@$_POST['submit']) {
                     $result = $stmt->fetch(PDO::FETCH_ASSOC);
                     if ($result) {
                         $_SESSION['login'] = true;
-                        $_SESSION['username'] = $item['username'];
-                        $_SESSION['id'] = $item['id'];
-                        header("location:main.php");
+                        $_SESSION['username'] = $result['username'];
+                        $_SESSION['id'] = $result['id'];
+                        header("location:main1.php");
                     } else {
                         echo "invalid input data";
                     }

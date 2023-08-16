@@ -1,11 +1,17 @@
 <?php
 require_once './src/function.php';
+require_once 'config.php';
 
 session_start();
 session_regenerate_id();
 if (!isset($_SESSION['login'])) {
     header("Location: login.php");
     exit;
+}
+if($connectType=='mysql') {
+    header("Location: logout.php");
+    exit;
+
 }
 
 $userid = $_SESSION['id'];
