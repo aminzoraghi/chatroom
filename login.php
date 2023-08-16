@@ -98,7 +98,7 @@ if (@$_POST['submit']) {
                 try {
                     $sql = "INSERT INTO users (username,name,email,password) VALUES (:username, :name, :email, :password)";
                     $stmt = $pdo->prepare($sql);
-                    $password=md5($password);
+                    $password = md5($password);
                     $stmt->bindParam(":username", $username);
                     $stmt->bindParam(":name", $name);
                     $stmt->bindParam(":email", $email);
@@ -116,15 +116,25 @@ if (@$_POST['submit']) {
                     echo "$key:$item </br>";
                 }
             } else {
-                foreach ($data as $key => $item) {
-                    if ($item['username'] == $username && $item['password'] == md5($password)) {
+                try {
+                    $password = md5($password);
+                    $sql = 'SELECT * FROM users WHERE username=:username AND password=:password';
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->bindParam(":username", $username);
+                    $stmt->bindParam(":password", $password);
+                    $stmt->execute();
+                    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                    if ($result) {
                         $_SESSION['login'] = true;
                         $_SESSION['username'] = $item['username'];
                         $_SESSION['id'] = $item['id'];
                         header("location:main.php");
+                    } else {
+                        echo "invalid input data";
                     }
-                };
-                echo "invalid input data";
+                } catch (PDOException $e) {
+                    echo "Connection failed: " . $e->getMessage();
+                }
             }
         }
     }
